@@ -25,3 +25,9 @@ jobs:
 
       - name: Build PlatformIO Project
         run: pio run --environment m5stick-c
+
+      - name: Publish Build Result
+        uses: actions/upload-artifact@v3
+        with:
+          name: ROM Image
+          path: artifact
