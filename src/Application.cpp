@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Nicolas LE GALL.
 // Copyright (c) 2022 Akihiro Yamamoto.
 // Licensed under the MIT License <https://spdx.org/licenses/MIT.html>
 // See LICENSE file in the project root for full license information.
@@ -27,6 +28,14 @@ void Application::task_handler() {
   if (M5.BtnA.wasPressed()) {
     _gui.moveNext();
   }
+  if (M5.BtnB.wasPressed()) {
+    if (M5.Display.getBrightness() != 0) {
+      M5.Display.setBrightness(0);
+    }
+    else {
+      M5.Display.setBrightness(75);
+    }
+  }
   //
   if (WiFi.status() != WL_CONNECTED) {
     // WiFiが接続されていない場合は接続する。
@@ -43,18 +52,18 @@ void Application::task_handler() {
       _telemetry->task_handler();
     }
     //
-    if (M5.Power.getBatteryLevel() < 100 &&
-        M5.Power.isCharging() == m5::Power_Class::is_discharging) {
-      // バッテリー駆動時は明るさを下げる
-      if (M5.Display.getBrightness() != 75) {
-        M5.Display.setBrightness(75);
-      }
-    } else {
-      // 通常の明るさ
-      if (M5.Display.getBrightness() != 150) {
-        M5.Display.setBrightness(150);
-      }
-    }
+    // if (M5.Power.getBatteryLevel() < 100 &&
+    //     M5.Power.isCharging() == m5::Power_Class::is_discharging) {
+    //   // バッテリー駆動時は明るさを下げる
+    //   if (M5.Display.getBrightness() != 75) {
+    //     M5.Display.setBrightness(75);
+    //   }
+    // } else {
+    //   // 通常の明るさ
+    //   if (M5.Display.getBrightness() != 150) {
+    //     M5.Display.setBrightness(150);
+    //   }
+    // }
   }
 }
 
@@ -113,39 +122,34 @@ std::optional<Telemetry::DeviceId> Application::getSettings_DeviceId() {
 }
 
 //
-std::optional<Telemetry::AwsIotEndpoint>
-Application::getSettings_AwsIoT_Endpoint() {
-  if (_settings_json.containsKey("AwsIoT") &&
-      _settings_json["AwsIoT"].containsKey("Endpoint")) {
-    std::string str = _settings_json["AwsIoT"]["Endpoint"];
-    return Telemetry::AwsIotEndpoint{std::move(str)};
+std::optional<Telemetry::MQTTEndpoint>
+Application::getSettings_MQTT_Endpoint() {
+  if (_settings_json.containsKey("MQTT") &&
+      _settings_json["MQTT"].containsKey("Endpoint")) {
+    std::string str = _settings_json["MQTT"]["Endpoint"];
+    return Telemetry::MQTTEndpoint{std::move(str)};
   }
   return std::nullopt;
 }
 
 //
-std::optional<std::string> Application::getSettings_AwsIoT_root_ca_file() {
-  if (_settings_json.containsKey("AwsIoT") &&
-      _settings_json["AwsIoT"].containsKey("root_ca_file")) {
-    return _settings_json["AwsIoT"]["root_ca_file"];
+
+std::optional<Telemetry::MQTTUser>
+Application::getSettings_MQTT_User_file() {
+  if (_settings_json.containsKey("MQTT") &&
+      _settings_json["MQTT"].containsKey("user")) {
+        std::string str = _settings_json["MQTT"]["user"];
+        return Telemetry::MQTTUser{std::move(str)};
   }
   return std::nullopt;
 }
 
 //
-std::optional<std::string> Application::getSettings_AwsIoT_certificate_file() {
-  if (_settings_json.containsKey("AwsIoT") &&
-      _settings_json["AwsIoT"].containsKey("certificate_file")) {
-    return _settings_json["AwsIoT"]["certificate_file"];
-  }
-  return std::nullopt;
-}
-
-//
-std::optional<std::string> Application::getSettings_AwsIoT_private_key_file() {
-  if (_settings_json.containsKey("AwsIoT") &&
-      _settings_json["AwsIoT"].containsKey("private_key_file")) {
-    return _settings_json["AwsIoT"]["private_key_file"];
+std::optional<Telemetry::MQTTPassword> Application::getSettings_MQTT_Password_file() {
+  if (_settings_json.containsKey("MQTT") &&
+      _settings_json["MQTT"].containsKey("password")) {
+        std::string str = _settings_json["MQTT"]["password"];
+        return Telemetry::MQTTPassword{std::move(str)};
   }
   return std::nullopt;
 }
@@ -298,10 +302,9 @@ bool Application::read_settings_json(std::ostream &os) {
     CHECK("RouteB password", getSettings_RouteB_password());
     CHECK("DeviceId", getSettings_DeviceId());
     CHECK("SensorId", getSettings_SensorId());
-    CHECK("AwsIoT Endpoint", getSettings_AwsIoT_Endpoint());
-    CHECK("AwsIoT root_ca_file", getSettings_AwsIoT_root_ca_file());
-    CHECK("AwsIoT certificate_file", getSettings_AwsIoT_certificate_file());
-    CHECK("AwsIoT private_key_file", getSettings_AwsIoT_private_key_file());
+    CHECK("MQTT Endpoint", getSettings_MQTT_Endpoint());
+    CHECK("MQTT User", getSettings_MQTT_User_file());
+    CHECK("MQTT Password", getSettings_MQTT_Password_file());
   }
 #undef CHECK
   // 設定ファイルに書いてあるファイルを読む
@@ -326,27 +329,6 @@ bool Application::read_settings_json(std::ostream &os) {
         return std::nullopt;
       }
     };
-    if (auto path = getSettings_AwsIoT_root_ca_file(); path) {
-      if (auto opt_contents = read_contents(*path); opt_contents) {
-        _aws_iot_root_ca = Telemetry::AwsIotRootCa{*opt_contents};
-      } else {
-        _aws_iot_root_ca = std::nullopt;
-      }
-    }
-    if (auto path = getSettings_AwsIoT_certificate_file(); path) {
-      if (auto opt_contents = read_contents(*path); opt_contents) {
-        _aws_iot_certificate = Telemetry::AwsIotCertificate{*opt_contents};
-      } else {
-        _aws_iot_certificate = std::nullopt;
-      }
-    }
-    if (auto path = getSettings_AwsIoT_private_key_file(); path) {
-      if (auto opt_contents = read_contents(*path); opt_contents) {
-        _aws_iot_private_key = Telemetry::AwsIotPrivateKey{*opt_contents};
-      } else {
-        _aws_iot_private_key = std::nullopt;
-      }
-    }
   }
 
   return true;
@@ -441,7 +423,9 @@ bool Application::start_telemetry(std::ostream &os) {
   //
   std::optional<Telemetry::SensorId> opt_sensorId;
   std::optional<Telemetry::DeviceId> opt_deviceId;
-  std::optional<Telemetry::AwsIotEndpoint> opt_awsiot_endpoint;
+  std::optional<Telemetry::MQTTEndpoint> _mqtt_endpoint;
+  std::optional<Telemetry::MQTTUser> _mqtt_user;
+  std::optional<Telemetry::MQTTPassword> _mqtt_password;
   // guard
   if (opt_sensorId = getSettings_SensorId(); opt_sensorId) {
     /* nothing to do */
@@ -461,33 +445,28 @@ bool Application::start_telemetry(std::ostream &os) {
     M5_LOGE("%s", ss.str().c_str());
     return false;
   }
-  if (opt_awsiot_endpoint = getSettings_AwsIoT_Endpoint();
-      opt_awsiot_endpoint) {
+  if (_mqtt_endpoint = getSettings_MQTT_Endpoint();
+      _mqtt_endpoint) {
     /* nothing to do */
   } else {
     std::ostringstream ss;
-    ss << "AWS IoT Endpoint not set";
+    ss << "MQTT Endpoint not set";
     os << ss.str() << std::endl;
     M5_LOGE("%s", ss.str().c_str());
     return false;
   }
-  if (!_aws_iot_certificate) {
+  if (_mqtt_user = getSettings_MQTT_User_file(); _mqtt_user) {}
+  else {
     std::ostringstream ss;
-    ss << "AWS IoT Certificate not set";
+    ss << "MQTT User not set";
     os << ss.str() << std::endl;
     M5_LOGE("%s", ss.str().c_str());
     return false;
   }
-  if (!_aws_iot_private_key) {
+  if (_mqtt_password = getSettings_MQTT_Password_file(); _mqtt_password) {}
+  else  {
     std::ostringstream ss;
-    ss << "AWS IoT PrivateKey not set";
-    os << ss.str() << std::endl;
-    M5_LOGE("%s", ss.str().c_str());
-    return false;
-  }
-  if (!_aws_iot_root_ca) {
-    std::ostringstream ss;
-    ss << "AWS IoT RootCA not set";
+    ss << "MQTT Password not set";
     os << ss.str() << std::endl;
     M5_LOGE("%s", ss.str().c_str());
     return false;
@@ -495,8 +474,8 @@ bool Application::start_telemetry(std::ostream &os) {
 
   //
   _telemetry.reset(new Telemetry{*opt_deviceId, *opt_sensorId,
-                                 *opt_awsiot_endpoint, *_aws_iot_root_ca,
-                                 *_aws_iot_certificate, *_aws_iot_private_key});
+                                 *_mqtt_endpoint, *_mqtt_user,
+                                 *_mqtt_password});
   //
   if (_telemetry) {
     // AWS IoTへ接続確立を試みる

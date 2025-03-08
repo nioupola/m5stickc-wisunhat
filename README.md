@@ -1,58 +1,77 @@
 # m5stickc-wisunhat
-M5StickCPlusとWi-SUN HATでスマートメータから情報を得る
 
-M5Stick-CとWi-SUN HAT(BP35A1)を接続する。
+![https://img.shields.io/badge/hadware-m5stickc-blue](https://img.shields.io/badge/hadware-m5stickc-blue)
 
-## 接続情報を用意する
-WiFiとスマートメータールートＢとAWS IoT Coreの接続情報をjson形式で書いて`data/settings.json`ファイルに保存する。  
-(`data/`ディレクトリがない場合は作る。)
+_Original work from [ak1211/m5stickc-wisunhat](https://github.com/ak1211/m5stickc-wisunhat)._
 
-接続情報例(data/settings.json)
-```
+C++ code for M5StickCPlus (ex [shop.m5stack.com](https://shop.m5stack.com/products/m5stickc-plus-esp32-pico-mini-iot-development-kit)) to read SmartMeter using [B-Route](https://www.tepco.co.jp/pg/consignment/liberalization/smartmeter-broute.html) and publish the data to a MQTT broker (aka HomeAssistant with Mosquitto broker). Internet is only required to sync time.
+
+You will need the Wi-SUN HAT (ex [ssci.to/7612](ssci.to/7612), doesn't come with the chip) and apply online to get the ID and password to connect to the SmartMeter.
+
+The original code uses AWS IoT to send, store and compute the data. I wanted to avoid 3rd parties and internet connection as much I can. I added a action for the B bouton to turn off the screen to reduce consumption.
+
+## Configuration
+
+### M5Stick
+
+You will need to create a file `settings.json` under `data/` using the following template:
+
+```json
 {
-    "wifi": {
-        "SSID": "************",
-        "password": "********"
-    },
-    "RouteB": {
-        "id": "********************************",
-        "password": "************"
-    },
-    "DeviceId": "********",
-    "SensorId": "**********",
-    "AwsIoT": {
-        "Endpoint": "***************************************************",
-        "root_ca_file": "/AmazonRootCA1.pem",
-        "certificate_file": "/certificate.pem.crt",
-        "private_key_file": "/private.pem.key"
-    }
+  "wifi": {
+    "SSID": "**********",
+    "password": "**********"
+  },
+  "RouteB": {
+    "id": "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345",
+    "password": "0123456789AB"
+  },
+  "DeviceId": "SmartMeter",
+  "SensorId": "SmartMeter",
+  "MQTT": {
+    "Endpoint": "HA_IP",
+    "user": "MQTT_USER",
+    "password": "MQTT_PASSWORD"
+  }
 }
 ```
 
-DeviceIdはMQTT publish / subscribe 識別用(自由に決めればよい)  
-SensorIdはDynamo DBのパーティションキー(自由に決めればよい)
+### Home Assistant
 
-AWS IoTからダウンロードした証明書ファイル
+#### MQTT
 
-- AmazonRootCA1.pem("-----BEGIN CERTIFICATE-----"から始まるファイル)
-- certificate.pem.crt("-----BEGIN CERTIFICATE-----"から始まるファイル)
-- private.pem.key("-----BEGIN RSA PRIVATE KEY-----"から始まるファイル)
+You will need to create a user and password inside Mosquitto broker since anonymous connexion is not allowed. To do so, you can go to `addon/core_mosquitto/config` and add inside `Logins`:
 
-以上のAWS IoT 証明書ファイルを`data/`におく。  
+```yaml
+- username: MQTT_USER
+  password: MQTT_PASSWORD
+```
 
-AWS IoTからダウンロードした証明書ファイル(public.pem.keyは不要)  
-こんなの
+#### Sensor
 
-- `AmazonRootCA1.pem`
-- `6*************************************************************76-certificate.pem.crt`
-- `6*************************************************************76-private.pem.key`  
+Since it's not an native HA integration, you have to configure the sensors to show and use the data. You can do so using the `File editor` and add the content to `configuration.yaml`:
 
-は長いので適当にリネームする。  
+```yaml
+mqtt:
+  sensor:
+    - state_topic: "SmartMeter/Power/Instantaneous"
+      unique_id: instantaneous_power
+      name: "Instantaneous Power"
+      device_class: power
+      unit_of_measurement: W
+      state_class: measurement
+      icon: mdi:flash
+    - state_topic: "SmartMeter/Energy/Cumulative/Positive"
+      unique_id: cumulative_energy
+      name: "Cumulative Energy Positive"
+      device_class: energy
+      unit_of_measurement: kWh
+      state_class: total_increasing
+      icon: mdi:flash
+```
 
-## 接続情報の書込み
-PlatformIO で Upload Filesystem Image すると`data/`ディレクトリの内容がM5Stickにアップロードされる。
+## Upload
 
-## ファームウエアの書込み
-PlatformIO で Build & Upload する。
+If you use VSCode, you can add [PlateformIO](https://platformio.org/install/ide?install=vscode) to manage the code. It will download all the librairies and allow you to perform everything from VSCode.
 
-AWS IoTページのMQTTテストクライアントで `device/+/data`をサブスクライブすると、これが発行するMQTT通信が(うまくいっていると)見られる。
+You will have to upload the data first (`m5stick-c/Plateform/Build Filesystem Image` and `m5stick-c/Plateform/Upload Filesystem Image`) and the, the code (`m5stick-c/General/Upload`). You can use `Upload and Monitor` first to see log and debug if needed.

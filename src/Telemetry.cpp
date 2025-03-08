@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Nicolas LE GALL.
 // Copyright (c) 2022 Akihiro Yamamoto.
 // Licensed under the MIT License <https://spdx.org/licenses/MIT.html>
 // See LICENSE file in the project root for full license information.
@@ -6,6 +7,7 @@
 #include "Gui.hpp"
 #include "StringBufWithDialogue.hpp"
 #include <ArduinoJson.h>
+#include <PubSubClient.h>
 #include <chrono>
 #include <future>
 #include <sstream>
@@ -77,26 +79,19 @@ std::string Telemetry::to_json_message(const DeviceId &deviceId,
 // AWS IoTへ接続確立を試みる
 bool Telemetry::begin(std::ostream &os, std::chrono::seconds timeout) {
   //
-  _https_client.reset(new WiFiClientSecure);
-  if (_https_client) {
-    _mqtt_client.reset(new PubSubClient{*_https_client});
+  _http_client.reset(new WiFiClient);
+  if (_http_client) {
+    _mqtt_client.reset(new PubSubClient{*_http_client});
   }
   // guard
-  if (!_https_client || !_mqtt_client) {
+  if (!_http_client || !_mqtt_client) {
     os << "out of memory" << std::endl;
     M5_LOGE("out of memory");
     return false;
   }
-  assert(_https_client);
   assert(_mqtt_client);
 
-  // HTTP over SSL/TLS
-  _https_client->setCACert(_root_ca.get().c_str());
-  _https_client->setCertificate(_certificate.get().c_str());
-  _https_client->setPrivateKey(_private_key.get().c_str());
-  _https_client->setTimeout(duration_cast<seconds>(SOCKET_TIMEOUT).count());
-
-  // MQTT over SSL/TLS
+  // MQTT
   _mqtt_client->setServer(_endpoint.get().c_str(), MQTT_PORT);
   _mqtt_client->setSocketTimeout(
       duration_cast<seconds>(SOCKET_TIMEOUT).count());
@@ -107,8 +102,7 @@ bool Telemetry::begin(std::ostream &os, std::chrono::seconds timeout) {
   const auto TIMEOVER{steady_clock::now() + timeout};
   bool success{false};
   do {
-    success = _mqtt_client->connect(_deviceId.get().c_str(), nullptr,
-                                    QUARITY_OF_SERVICE, false, "");
+    success = _mqtt_client->connect(_endpoint.get().c_str(), _mqtt_user.get().c_str(), _mqtt_password.get().c_str());
     if (success) {
       break;
     } else {
@@ -120,8 +114,7 @@ bool Telemetry::begin(std::ostream &os, std::chrono::seconds timeout) {
   if (!_mqtt_client->connected()) {
     // MQTT接続失敗
     std::ostringstream ss;
-    ss << "connect fail to AWS IoT, state: " << strMqttState(*_mqtt_client)
-       << ", reason: " + httpsLastError(*_https_client);
+    ss << "connect fail to MQTT, state: " << strMqttState(*_mqtt_client);
     os << ss.str() << std::endl;
     M5_LOGE("%s", ss.str().c_str());
     return false;
@@ -182,7 +175,28 @@ bool Telemetry::task_handler() {
         _sending_fifo_queue.front());
     // MQTT送信
     M5_LOGD("%s", msg.c_str());
-    bool result = _mqtt_client->publish(_publish_topic.c_str(), msg.c_str());
+    bool result = false;
+    if(strstr(msg.c_str(), "instant_watt")) {
+      std::string key = "\"instant_watt\":";
+      size_t pos = msg.find(key);
+      pos += key.length();
+      size_t endPos = msg.find_first_of(",}", pos);
+      std::string valueString = msg.substr(pos, endPos - pos);
+
+      result = _mqtt_client->publish("SmartMeter/Power/Instantaneous", valueString.c_str());
+    }
+    else if(strstr(msg.c_str(), "cumlative_kwh")) {
+      std::string key = "\"cumlative_kwh\":";
+      size_t pos = msg.find(key);
+      pos += key.length();
+      size_t endPos = msg.find_first_of(",}", pos);
+      std::string valueString = msg.substr(pos, endPos - pos);
+
+      result = _mqtt_client->publish("SmartMeter/Energy/Cumulative/Positive", valueString.c_str());
+    }
+    else {
+      result = _mqtt_client->publish(_publish_topic.c_str(), msg.c_str());
+    }
     if (result) {
       _message_id_counter++;
       // IoT Coreへ送信した測定値をFIFOから消す

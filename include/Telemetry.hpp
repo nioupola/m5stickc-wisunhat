@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Nicolas LE GALL.
 // Copyright (c) 2022 Akihiro Yamamoto.
 // Licensed under the MIT License <https://spdx.org/licenses/MIT.html>
 // See LICENSE file in the project root for full license information.
@@ -36,36 +37,28 @@ public:
     const std::string &get() const { return _id; }
   };
   //
-  class AwsIotEndpoint final {
+  class MQTTEndpoint final {
     std::string _endpoint;
 
   public:
-    explicit AwsIotEndpoint(std::string in) : _endpoint{in} {}
+    explicit MQTTEndpoint(std::string in) : _endpoint{in} {}
     const std::string &get() const { return _endpoint; }
   };
   //
-  class AwsIotRootCa final {
-    std::string _root_ca;
+  class MQTTUser final {
+    std::string _mqtt_user;
 
   public:
-    explicit AwsIotRootCa(std::string in) : _root_ca{in} {}
-    const std::string &get() const { return _root_ca; }
+    explicit MQTTUser(std::string in) : _mqtt_user{in} {}
+    const std::string &get() const { return _mqtt_user; }
   };
   //
-  class AwsIotCertificate final {
+  class MQTTPassword final {
     std::string _cert;
 
   public:
-    explicit AwsIotCertificate(std::string in) : _cert{in} {}
+    explicit MQTTPassword(std::string in) : _cert{in} {}
     const std::string &get() const { return _cert; }
-  };
-  //
-  class AwsIotPrivateKey final {
-    std::string _key;
-
-  public:
-    explicit AwsIotPrivateKey(std::string in) : _key{in} {}
-    const std::string &get() const { return _key; }
   };
   //
   using MessageId = uint32_t;
@@ -86,20 +79,18 @@ public:
 public:
   constexpr static auto RECONNECT_TIMEOUT = std::chrono::seconds{30};
   constexpr static auto MAXIMUM_QUEUE_SIZE = size_t{100};
-  constexpr static auto MQTT_PORT = uint16_t{8883};
+  constexpr static auto MQTT_PORT = int{1883};
   constexpr static auto SOCKET_TIMEOUT = std::chrono::seconds{90};
   constexpr static auto KEEP_ALIVE = std::chrono::seconds{60};
   constexpr static auto QUARITY_OF_SERVICE = uint8_t{1};
   //
-  Telemetry(DeviceId deviceId, SensorId sensorId, AwsIotEndpoint endpoint,
-            AwsIotRootCa root_ca, AwsIotCertificate certificate,
-            AwsIotPrivateKey private_key)
+  Telemetry(DeviceId deviceId, SensorId sensorId, MQTTEndpoint endpoint,
+    MQTTUser mqtt_user, MQTTPassword mqtt_password)
       : _deviceId{deviceId},
         _sensorId{sensorId},
         _endpoint{endpoint},
-        _root_ca{root_ca},
-        _certificate{certificate},
-        _private_key{private_key},
+        _mqtt_user{mqtt_user},
+        _mqtt_password{mqtt_password},
         _publish_topic{std::string{"device/"} + _deviceId.get() +
                        std::string{"/data"}},
         _subscribe_topic{std::string{"device/"} + _deviceId.get() +
@@ -119,7 +110,7 @@ public:
 
 private:
   //
-  std::unique_ptr<WiFiClientSecure> _https_client;
+  std::unique_ptr<WiFiClient> _http_client;
   std::unique_ptr<PubSubClient> _mqtt_client;
   // IoT Core送信用バッファ
   std::queue<Payload> _sending_fifo_queue;
@@ -130,13 +121,11 @@ private:
   //
   const SensorId _sensorId;
   //
-  const AwsIotEndpoint _endpoint;
+  const MQTTEndpoint _endpoint;
   //
-  const AwsIotRootCa _root_ca;
+  const MQTTUser _mqtt_user;
   //
-  const AwsIotCertificate _certificate;
-  //
-  const AwsIotPrivateKey _private_key;
+  const MQTTPassword _mqtt_password;
   //
   const std::string _publish_topic;
   //
