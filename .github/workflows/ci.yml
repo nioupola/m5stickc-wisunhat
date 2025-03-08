@@ -36,4 +36,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          file: .pio/build/m5stick-c/firmware.bin
+          files: .pio/build/m5stick-c/firmware.bin
