@@ -27,7 +27,7 @@ jobs:
         run: pio run --environment m5stick-c
 
       - name: Publish Build Result
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: ROM Image
-          path: artifact
+          name: firmware.bin
+          path: .pio/build/m5stick-c/firmware.bin
