@@ -7,3 +7,4 @@
 include/credentials.h
 data/*
 data/settings.json
+*.log

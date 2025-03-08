@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Nicolas LE GALL.
 // Copyright (c) 2022 Akihiro Yamamoto.
 // Licensed under the MIT License <https://spdx.org/licenses/MIT.html>
 // See LICENSE file in the project root for full license information.
@@ -79,21 +80,16 @@ private:
   Repository::ElectricPowerData _electric_power_data;
   // JSON形式設定ファイル
   JsonDocument _settings_json;
-  // AWS設定
-  std::optional<Telemetry::AwsIotRootCa> _aws_iot_root_ca;
-  std::optional<Telemetry::AwsIotCertificate> _aws_iot_certificate;
-  std::optional<Telemetry::AwsIotPrivateKey> _aws_iot_private_key;
-  //
+
   std::optional<std::string> getSettings_wifi_SSID();
   std::optional<std::string> getSettings_wifi_password();
   std::optional<std::string> getSettings_RouteB_id();
   std::optional<std::string> getSettings_RouteB_password();
   std::optional<Telemetry::SensorId> getSettings_SensorId();
   std::optional<Telemetry::DeviceId> getSettings_DeviceId();
-  std::optional<Telemetry::AwsIotEndpoint> getSettings_AwsIoT_Endpoint();
-  std::optional<std::string> getSettings_AwsIoT_root_ca_file();
-  std::optional<std::string> getSettings_AwsIoT_certificate_file();
-  std::optional<std::string> getSettings_AwsIoT_private_key_file();
+  std::optional<Telemetry::MQTTEndpoint> getSettings_MQTT_Endpoint();
+  std::optional<Telemetry::MQTTUser> getSettings_MQTT_User_file();
+  std::optional<Telemetry::MQTTPassword> getSettings_MQTT_Password_file();
   //
   Gui _gui;
   //
