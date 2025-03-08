@@ -70,6 +70,8 @@ mqtt:
       icon: mdi:flash
 ```
 
+![HA sensors](ha-sensor.jpg)
+
 ## Upload
 
 If you use VSCode, you can add [PlateformIO](https://platformio.org/install/ide?install=vscode) to manage the code. It will download all the librairies and allow you to perform everything from VSCode.
