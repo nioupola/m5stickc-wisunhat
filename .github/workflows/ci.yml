@@ -1,6 +1,8 @@
 name: PlatformIO CI
 
-on: [push]
+on:
+  - push
+  - workflow_dispatch
 
 jobs:
   build:
@@ -17,9 +19,9 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-            python-version: '3.11'
-      - name : Install PlatformIO Core
+          python-version: "3.11"
+      - name: Install PlatformIO Core
         run: pip install --upgrade platformio
 
-      - name : Build PlatformIO Project
+      - name: Build PlatformIO Project
         run: pio run --environment m5stick-c
