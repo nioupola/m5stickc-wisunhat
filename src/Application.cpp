@@ -31,8 +31,7 @@ void Application::task_handler() {
   if (M5.BtnB.wasPressed()) {
     if (M5.Display.getBrightness() != 0) {
       M5.Display.setBrightness(0);
-    }
-    else {
+    } else {
       M5.Display.setBrightness(75);
     }
   }
@@ -69,87 +68,78 @@ void Application::task_handler() {
 
 //
 std::optional<std::string> Application::getSettings_wifi_SSID() {
-  if (_settings_json.containsKey("wifi") &&
-      _settings_json["wifi"].containsKey("SSID")) {
-    return _settings_json["wifi"]["SSID"];
+  if (_settings_json["wifi"].is<JsonObject>() &&
+      _settings_json["wifi"]["SSID"].is<std::string>()) {
+    return _settings_json["wifi"]["SSID"].as<std::string>();
   }
   return std::nullopt;
 }
 
-//
 std::optional<std::string> Application::getSettings_wifi_password() {
-  if (_settings_json.containsKey("wifi") &&
-      _settings_json["wifi"].containsKey("password")) {
-    return _settings_json["wifi"]["password"];
+  if (_settings_json["wifi"].is<JsonObject>() &&
+      _settings_json["wifi"]["password"].is<std::string>()) {
+    return _settings_json["wifi"]["password"].as<std::string>();
   }
   return std::nullopt;
 }
 
-//
 std::optional<std::string> Application::getSettings_RouteB_id() {
-  if (_settings_json.containsKey("RouteB") &&
-      _settings_json["RouteB"].containsKey("id")) {
-    return _settings_json["RouteB"]["id"];
+  if (_settings_json["RouteB"].is<JsonObject>() &&
+      _settings_json["RouteB"]["id"].is<std::string>()) {
+    return _settings_json["RouteB"]["id"].as<std::string>();
   }
   return std::nullopt;
 }
 
-//
 std::optional<std::string> Application::getSettings_RouteB_password() {
-  if (_settings_json.containsKey("RouteB") &&
-      _settings_json["RouteB"].containsKey("password")) {
-    return _settings_json["RouteB"]["password"];
+  if (_settings_json["RouteB"].is<JsonObject>() &&
+      _settings_json["RouteB"]["password"].is<std::string>()) {
+    return _settings_json["RouteB"]["password"].as<std::string>();
   }
   return std::nullopt;
 }
 
-//
 std::optional<Telemetry::SensorId> Application::getSettings_SensorId() {
-  if (_settings_json.containsKey("SensorId")) {
-    std::string str = _settings_json["SensorId"];
+  if (_settings_json["SensorId"].is<std::string>()) {
+    std::string str = _settings_json["SensorId"].as<std::string>();
     return Telemetry::SensorId{std::move(str)};
   }
   return std::nullopt;
 }
 
-//
 std::optional<Telemetry::DeviceId> Application::getSettings_DeviceId() {
-  if (_settings_json.containsKey("DeviceId")) {
-    std::string str = _settings_json["DeviceId"];
+  if (_settings_json["DeviceId"].is<std::string>()) {
+    std::string str = _settings_json["DeviceId"].as<std::string>();
     return Telemetry::DeviceId{std::move(str)};
   }
   return std::nullopt;
 }
 
-//
 std::optional<Telemetry::MQTTEndpoint>
 Application::getSettings_MQTT_Endpoint() {
-  if (_settings_json.containsKey("MQTT") &&
-      _settings_json["MQTT"].containsKey("Endpoint")) {
-    std::string str = _settings_json["MQTT"]["Endpoint"];
+  if (_settings_json["MQTT"].is<JsonObject>() &&
+      _settings_json["MQTT"]["Endpoint"].is<std::string>()) {
+    std::string str = _settings_json["MQTT"]["Endpoint"].as<std::string>();
     return Telemetry::MQTTEndpoint{std::move(str)};
   }
   return std::nullopt;
 }
 
-//
-
-std::optional<Telemetry::MQTTUser>
-Application::getSettings_MQTT_User_file() {
-  if (_settings_json.containsKey("MQTT") &&
-      _settings_json["MQTT"].containsKey("user")) {
-        std::string str = _settings_json["MQTT"]["user"];
-        return Telemetry::MQTTUser{std::move(str)};
+std::optional<Telemetry::MQTTUser> Application::getSettings_MQTT_User_file() {
+  if (_settings_json["MQTT"].is<JsonObject>() &&
+      _settings_json["MQTT"]["user"].is<std::string>()) {
+    std::string str = _settings_json["MQTT"]["user"].as<std::string>();
+    return Telemetry::MQTTUser{std::move(str)};
   }
   return std::nullopt;
 }
 
-//
-std::optional<Telemetry::MQTTPassword> Application::getSettings_MQTT_Password_file() {
-  if (_settings_json.containsKey("MQTT") &&
-      _settings_json["MQTT"].containsKey("password")) {
-        std::string str = _settings_json["MQTT"]["password"];
-        return Telemetry::MQTTPassword{std::move(str)};
+std::optional<Telemetry::MQTTPassword>
+Application::getSettings_MQTT_Password_file() {
+  if (_settings_json["MQTT"].is<JsonObject>() &&
+      _settings_json["MQTT"]["password"].is<std::string>()) {
+    std::string str = _settings_json["MQTT"]["password"].as<std::string>();
+    return Telemetry::MQTTPassword{std::move(str)};
   }
   return std::nullopt;
 }
@@ -445,8 +435,7 @@ bool Application::start_telemetry(std::ostream &os) {
     M5_LOGE("%s", ss.str().c_str());
     return false;
   }
-  if (_mqtt_endpoint = getSettings_MQTT_Endpoint();
-      _mqtt_endpoint) {
+  if (_mqtt_endpoint = getSettings_MQTT_Endpoint(); _mqtt_endpoint) {
     /* nothing to do */
   } else {
     std::ostringstream ss;
@@ -455,16 +444,16 @@ bool Application::start_telemetry(std::ostream &os) {
     M5_LOGE("%s", ss.str().c_str());
     return false;
   }
-  if (_mqtt_user = getSettings_MQTT_User_file(); _mqtt_user) {}
-  else {
+  if (_mqtt_user = getSettings_MQTT_User_file(); _mqtt_user) {
+  } else {
     std::ostringstream ss;
     ss << "MQTT User not set";
     os << ss.str() << std::endl;
     M5_LOGE("%s", ss.str().c_str());
     return false;
   }
-  if (_mqtt_password = getSettings_MQTT_Password_file(); _mqtt_password) {}
-  else  {
+  if (_mqtt_password = getSettings_MQTT_Password_file(); _mqtt_password) {
+  } else {
     std::ostringstream ss;
     ss << "MQTT Password not set";
     os << ss.str() << std::endl;
@@ -473,9 +462,8 @@ bool Application::start_telemetry(std::ostream &os) {
   }
 
   //
-  _telemetry.reset(new Telemetry{*opt_deviceId, *opt_sensorId,
-                                 *_mqtt_endpoint, *_mqtt_user,
-                                 *_mqtt_password});
+  _telemetry.reset(new Telemetry{*opt_deviceId, *opt_sensorId, *_mqtt_endpoint,
+                                 *_mqtt_user, *_mqtt_password});
   //
   if (_telemetry) {
     // AWS IoTへ接続確立を試みる
